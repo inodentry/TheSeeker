@@ -16,7 +16,6 @@ use theseeker_engine::physics::PhysicsPlugin;
 
 mod appstate;
 mod assets;
-mod audio;
 mod camera;
 mod cli;
 mod game;
@@ -105,7 +104,6 @@ fn main() {
             state: AppState::AssetsLoading,
         },
         crate::assets::AssetsPlugin,
-        crate::audio::AudioPlugin,
         crate::locale::LocalePlugin,
         crate::cli::CliPlugin,
         crate::ui::UiPlugin,

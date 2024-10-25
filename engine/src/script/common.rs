@@ -530,13 +530,13 @@ impl ScriptAction for CommonScriptAction {
                             ctl.controller.play_immediately(sound.decoder(), volume, pan);
                         },
                         ScriptActionTiming::UnknownTick => {
-                            ctl.controller.play_at_tick(gt.tick() as u32, 0, sound.decoder(), volume, pan);
+                            ctl.controller.play_at_tick(0, gt.hz(), gt.tick() as u32, 0, sound.decoder(), volume, pan);
                         },
                         ScriptActionTiming::Time(time) => {
-                            ctl.controller.play_at_time(time, sound.decoder(), volume, pan);
+                            ctl.controller.play_at_time(0, time, sound.decoder(), volume, pan);
                         },
                         ScriptActionTiming::Tick(tick) => {
-                            ctl.controller.play_at_tick(tick as u32, 0, sound.decoder(), volume, pan);
+                            ctl.controller.play_at_tick(0, gt.hz(), tick as u32, 0, sound.decoder(), volume, pan);
                         },
                     }
                 }

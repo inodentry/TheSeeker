@@ -17,7 +17,7 @@ fn setup_precisionmixer(
     mut commands: Commands,
     mut ass: ResMut<Assets<PrecisionMixerInstance>>,
 ) {
-    let controller = mixer::PrecisionMixerController::new(2, 48_000, 96.0);
+    let controller = mixer::PrecisionMixerController::new(2, 48_000);
     let handle = ass.add(PrecisionMixerInstance {
         controller: controller.clone(),
     });
@@ -28,7 +28,7 @@ fn setup_precisionmixer(
         AudioSourceBundle {
             source: handle,
             ..Default::default()
-        }
+        },
     ));
 }
 
