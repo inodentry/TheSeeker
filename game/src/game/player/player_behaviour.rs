@@ -109,7 +109,7 @@ pub fn player_stealth(
             // turn player stealth
             sprite.color = sprite.color.with_a(0.5);
         } else {
-            stealthing.duration += 1.0 / time.hz as f32;
+            stealthing.duration += 1.0 / time.hz() as f32;
             if stealthing.duration > config.stealth_duration {
                 sprite.color = sprite.color.with_a(1.);
 
@@ -136,7 +136,7 @@ pub fn player_can_stealth(
     mut rig: ResMut<CameraRig>,
 ) {
     for (action_state, mut can_stealth, mut transition_queue, gent) in q_gent.iter_mut() {
-        can_stealth.remaining_cooldown -= 1.0 / time.hz as f32;
+        can_stealth.remaining_cooldown -= 1.0 / time.hz() as f32;
         if can_stealth.is_added() {
             let mut sprite = sprites.get_mut(gent.e_gfx).unwrap();
             sprite.color = sprite.color.with_a(1.0);
@@ -176,7 +176,7 @@ pub fn player_whirl(
         let mut stop_whirling = false;
         if action_state.pressed(&PlayerAction::Whirl) {
             // only start if we have enough whirl energy for full rotation
-            if whirl.energy - (min_ticks * config.whirl_cost / time.hz as f32) > 0.0
+            if whirl.energy - (min_ticks * config.whirl_cost / time.hz() as f32) > 0.0
                 && grounded.is_some()
             {
                 if attacking.is_none() {
@@ -212,9 +212,9 @@ pub fn player_whirl(
 
         if whirl.active {
             whirl.active_ticks += 1;
-            whirl.energy -= config.whirl_cost / time.hz as f32;
+            whirl.energy -= config.whirl_cost / time.hz() as f32;
         } else {
-            whirl.energy = (whirl.energy + config.whirl_regen / time.hz as f32)
+            whirl.energy = (whirl.energy + config.whirl_regen / time.hz() as f32)
                 .clamp(0.0, config.max_whirl_energy);
         }
     }
@@ -467,7 +467,7 @@ pub fn player_can_dash(
     for (action_state, facing, mut can_dash, mut velocity, mut transition_queue, hitfreeze) in
         q_gent.iter_mut()
     {
-        can_dash.remaining_cooldown -= 1.0 / time.hz as f32;
+        can_dash.remaining_cooldown -= 1.0 / time.hz() as f32;
         if action_state.just_pressed(&PlayerAction::Dash) {
             if can_dash.remaining_cooldown <= 0.0 {
                 transition_queue.push(CanDash::new_transition(
@@ -510,7 +510,7 @@ pub fn player_dash(
                 *hitfreeze = HitFreezeTime(u32::MAX, None)
             }
         } else {
-            dashing.duration += 1.0 / time.hz as f32;
+            dashing.duration += 1.0 / time.hz() as f32;
             if dashing.duration > config.dash_duration {
                 dashing.duration = 0.0;
                 transitions.push(Dashing::new_transition(CanDash::new(
@@ -575,7 +575,7 @@ pub fn player_collisions(
                 possible_pos,
                 shape_dir,
                 &*shape,
-                projected_velocity.length() / time.hz as f32 + 0.5,
+                projected_velocity.length() / time.hz() as f32 + 0.5,
                 interaction,
                 Some(entity),
             ) {
@@ -687,13 +687,13 @@ pub fn player_collisions(
         }
 
         pos.translation =
-            (pos.translation.xy() + linear_velocity.xy() * (1.0 / time.hz as f32)).extend(z);
+            (pos.translation.xy() + linear_velocity.xy() * (1.0 / time.hz() as f32)).extend(z);
 
         if let Some(mut slide) = slide {
             if wall_slide {
                 slide.0 = 0.0;
             } else {
-                slide.0 += 1.0 / time.hz as f32;
+                slide.0 += 1.0 / time.hz() as f32;
             }
         }
     }
@@ -757,7 +757,7 @@ fn player_grounded(
                 // resets the c_time every time ground gets close again.
                 c_time.0 = 0.0;
             } else {
-                c_time.0 += (1.0 / time.hz) as f32;
+                c_time.0 += (1.0 / time.hz()) as f32;
             }
             if c_time.0 < max_coyote_time {
                 in_c_time = true;
@@ -814,7 +814,7 @@ fn player_falling(
         let mut falling = true;
         if let Some((hit_entity, toi)) = hits.cast(&spatial_query, &transform, Some(entity)) {
             //if we are ~touching the ground
-            if (toi.toi + velocity.y * (1.0 / time.hz) as f32) < GROUNDED_THRESHOLD {
+            if (toi.toi + velocity.y * (1.0 / time.hz()) as f32) < GROUNDED_THRESHOLD {
                 transitions.push(Falling::new_transition(Grounded));
                 //stop falling
                 velocity.y = 0.0;

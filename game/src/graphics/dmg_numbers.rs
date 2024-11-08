@@ -73,7 +73,7 @@ fn instance(
                     commands.spawn((
                         DmgNumber(
                             world_position,
-                            game_time.tick() as f64 / game_time.hz
+                            game_time.tick() as f64 / game_time.hz()
                                 + game_time.last_update().as_secs_f64(),
                         ),
                         TextBundle::from_section(
@@ -121,7 +121,7 @@ fn update_number(
         let text_style = &mut text.sections[0].style;
         // This way the floating text position is dependent on the gametick time,
         // so if the game is paused, the floating numbers will pause as well.
-        let elapsed_time = game_time.tick() as f64 / game_time.hz
+        let elapsed_time = game_time.tick() as f64 / game_time.hz()
             + game_time.last_update().as_secs_f64()
             - dmg_number.1;
 

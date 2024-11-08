@@ -856,7 +856,7 @@ fn ranged_attack(
 
             let relative_height = enemy_transform.translation().y - transform.translation.y;
             let delta_x = transform.translation.x - enemy_transform.translation().x;
-            let gravity = config.fall_accel * time.hz as f32;
+            let gravity = config.fall_accel * time.hz() as f32;
             let rng_factor = 1.0;
             let mut speed =
                 ballistic_speed(Range::RANGED, gravity, relative_height) * rng_factor as f32;
@@ -1177,7 +1177,7 @@ fn move_collide(
                 transform.translation.xy(),
                 shape_dir,
                 &*shape,
-                linear_velocity.length() / time.hz as f32 + 0.5,
+                linear_velocity.length() / time.hz() as f32 + 0.5,
                 InteractionGroups {
                     memberships: ENEMY,
                     //combination of the PLAYER + GROUND Groups
@@ -1207,7 +1207,7 @@ fn move_collide(
             //TODO: should be based on collider half extent y + a little
             Vec2::new(front, transform.translation.y - 10.),
             Vec2::new(dir, 0.),
-            x_len / time.hz as f32,
+            x_len / time.hz() as f32,
             false,
             InteractionGroups {
                 memberships: ENEMY,
@@ -1222,7 +1222,7 @@ fn move_collide(
         }
 
         transform.translation =
-            (transform.translation.xy() + projected_velocity * (1.0 / time.hz as f32)).extend(z);
+            (transform.translation.xy() + projected_velocity * (1.0 / time.hz() as f32)).extend(z);
     }
 }
 

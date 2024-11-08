@@ -58,6 +58,6 @@ pub fn arc_projectile(
         projectile.vel.0.y -= fall_accel;
         let z = transform.translation.z;
         transform.translation =
-            (transform.translation.xy() + *projectile.vel * (1.0 / time.hz as f32)).extend(z);
+            (transform.translation.xy() + *projectile.vel * (1.0 / time.hz() as f32)).extend(z);
     }
 }

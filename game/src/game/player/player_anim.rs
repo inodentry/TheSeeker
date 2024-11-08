@@ -203,7 +203,7 @@ fn sprite_flip(
                 // checks that player is actually against the wall, rather then it being close
                 // enough time from the player having left the wall to still jump
                 // (ie: not wall_jump_coyote_time)
-                .map(|s| s.0 <= 1.0 / time.hz as f32)
+                .map(|s| s.0 <= 1.0 / time.hz() as f32)
                 .unwrap_or(false);
             if pressed_on_wall && player.current_key() == Some("anim.player.SwordBasicAir") {
                 facing = match facing {

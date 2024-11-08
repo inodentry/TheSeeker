@@ -197,7 +197,7 @@ fn despawn_lingering(
     mut commands: Commands,
 ) {
     for ((entity, mut lifetime)) in &mut query {
-        lifetime.0 -= 1.0 / time.hz as f32;
+        lifetime.0 -= 1.0 / time.hz() as f32;
         if lifetime.0 < 0.0 {
             commands.entity(entity).despawn();
         }

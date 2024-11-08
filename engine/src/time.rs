@@ -1,4 +1,5 @@
 use bevy::ecs::schedule::ScheduleLabel;
+use bevy::ecs::system::SystemState;
 
 use crate::prelude::*;
 
@@ -9,18 +10,10 @@ impl Plugin for GameTimePlugin {
         app.init_schedule(GameTickUpdate);
         app.init_schedule(GameTickPost);
         app.init_resource::<GameTime>();
-        app.add_systems(
-            Update,
-            (
-                update_gametime,
-                run_gametickupdate_schedule.after(update_gametime),
-            ),
-        );
+        app.add_systems(Update, run_gametickupdate_schedule);
         app.configure_sets(
             Update,
-            GameTickSet::Pre
-                .before(run_gametickupdate_schedule)
-                .after(update_gametime),
+            GameTickSet::Pre.before(run_gametickupdate_schedule),
         );
         app.configure_sets(
             Update,
@@ -77,24 +70,16 @@ pub struct GameTickPost;
 #[derive(Resource, Debug)]
 pub struct GameTime {
     /// The time base rate
-    pub hz: f64,
+    step: Duration,
     tick: u64,
-    new_ticks: u64,
-    total_ticks: u64,
     overstep: f64,
     last_update: Duration,
+    total_time: Duration,
 }
 
 impl Default for GameTime {
     fn default() -> Self {
-        Self {
-            hz: 96.0,
-            tick: 0,
-            new_ticks: 0,
-            total_ticks: 0,
-            overstep: 0.0,
-            last_update: Duration::new(0, 0),
-        }
+        Self::new(96.0)
     }
 }
 
@@ -102,27 +87,19 @@ impl GameTime {
     /// Create with a non-default tick rate
     pub fn new(hz: f64) -> Self {
         Self {
-            hz,
-            ..Default::default()
+            step: Duration::from_secs_f64(1.0 / hz),
+            tick: 0,
+            overstep: 0.0,
+            last_update: Duration::new(0, 0),
+            total_time: Duration::new(0, 0),
         }
     }
 
     /// Get the current tick number to be simulated
     ///
-    /// Increments with every run of the `GameTickUpdate` schedule, until it reaches
-    /// the `total_ticks` target value.
+    /// Increments with every run of the `GameTickUpdate` schedule
     pub fn tick(&self) -> u64 {
         self.tick
-    }
-
-    /// Get the number of new ticks to be simulated this Bevy frame update
-    pub fn new_ticks(&self) -> u64 {
-        self.new_ticks
-    }
-
-    /// Get the total target number of ticks as of this Bevy frame update
-    pub fn total_ticks(&self) -> u64 {
-        self.total_ticks
     }
 
     /// Get the leftover partial tick to be carried over to the next Bevy frame update
@@ -135,58 +112,124 @@ impl GameTime {
         self.last_update
     }
 
-    /// Reset tick counters to zero, set the last update to now, keep the `hz` value
-    pub fn reset(&mut self, now: Duration) {
+    /// Reset tick counters to zero, set the last update to now, keep the tickrate
+    fn reset(&mut self, now: Duration) {
         *self = Self {
-            hz: self.hz,
+            step: self.step,
             last_update: now,
-            ..Default::default()
+            tick: 0,
+            overstep: 0.0,
+            total_time: Duration::default(),
         };
     }
 
-    /// Every Bevy frame, this gets called to advance the tick counters
-    pub fn update(&mut self, time: &Time) {
-        let now = time.elapsed();
-        let delta = now - self.last_update;
-        self.last_update = now;
-
-        let delta_f64 = delta.as_secs_f64();
-        let new_ticks = delta_f64 * self.hz + self.overstep;
-        self.total_ticks += new_ticks as u64;
-        self.overstep = new_ticks.fract();
-        self.new_ticks = self.total_ticks - self.tick;
+    pub fn time(&self) -> Duration {
+        self.total_time
     }
 
-    /// returns the amount of time since start; ie: ticks * tick length
     pub fn time_in_seconds(&self) -> f64 {
-        self.tick() as f64 * self.seconds_per_tick()
+        self.total_time.as_secs_f64()
     }
 
     /// Convenience function to save you the math
     pub fn seconds_per_tick(&self) -> f64 {
-        1.0 / self.hz
+        self.step.as_secs_f64()
+    }
+
+    /// Get the current tick rate
+    pub fn hz(&self) -> f64 {
+        1.0 / self.step.as_secs_f64()
     }
 }
 
-/// Update `GameTime` every frame
-pub fn update_gametime(time: Res<Time>, mut gametime: ResMut<GameTime>) {
-    gametime.update(&time);
+#[derive(Event)]
+pub enum GameTickManageEvent {
+    ResetTickCounter,
+    SetDefaultStep,
+    SetExactRate(f64),
+    SetExactStep(Duration),
+    SetTickRateDefaultFraction(f64),
+}
+
+#[derive(Event)]
+pub struct GameTickResetEvent;
+
+fn game_tick_manage_events(
+    time: Res<Time>,
+    mut gt: ResMut<GameTime>,
+    mut evr_manage: EventReader<GameTickManageEvent>,
+    mut evw_reset: EventWriter<GameTickResetEvent>,
+    mut default_step: Local<Duration>,
+) {
+    if *default_step == Duration::default() {
+        *default_step = gt.step;
+    }
+
+    for manage in evr_manage.read() {
+        match manage {
+            GameTickManageEvent::ResetTickCounter => {
+                gt.reset(time.elapsed());
+                evw_reset.send(GameTickResetEvent);
+            },
+            GameTickManageEvent::SetDefaultStep => {
+                if gt.step != *default_step {
+                    gt.step = *default_step;
+                    evw_reset.send(GameTickResetEvent);
+                }
+            },
+            GameTickManageEvent::SetExactStep(step) => {
+                if gt.step != *step {
+                    gt.step = *step;
+                    evw_reset.send(GameTickResetEvent);
+                }
+            },
+            GameTickManageEvent::SetExactRate(hz) => {
+                let step = Duration::from_secs_f64(1.0 / *hz);
+                if gt.step != step {
+                    gt.step = step;
+                    evw_reset.send(GameTickResetEvent);
+                }
+            },
+            GameTickManageEvent::SetTickRateDefaultFraction(frac) => {
+                let step =
+                    Duration::from_secs_f64(default_step.as_secs_f64() / *frac);
+                if gt.step != step {
+                    gt.step = step;
+                    evw_reset.send(GameTickResetEvent);
+                }
+            },
+        }
+    }
 }
 
 /// Our alternative to Bevy's fixed timestep, based on `GameTime`
-pub fn run_gametickupdate_schedule(world: &mut World) {
+pub fn run_gametickupdate_schedule(
+    world: &mut World,
+    ss: &mut SystemState<(Res<Time>, ResMut<GameTime>)>,
+) {
     loop {
-        let gametime = world.resource::<GameTime>();
-        if gametime.tick >= gametime.total_ticks {
-            break;
+        {
+            let (time, mut gametime) = ss.get_mut(world);
+            if gametime.total_time + gametime.step > time.elapsed() {
+                break;
+            }
         }
         world.run_schedule(GameTickUpdate);
         world.run_schedule(GameTickPost);
-        world.resource_mut::<GameTime>().tick += 1;
+        {
+            let mut gametime = world.resource_mut::<GameTime>();
+            let step = gametime.step;
+            gametime.total_time += step;
+            gametime.tick += 1;
+        }
     }
+    let (time, mut gametime) = ss.get_mut(world);
+    gametime.last_update = time.elapsed();
 }
 
 /// Run condition to run something "every N ticks"
 pub fn at_tick_multiples(quant: Quant) -> impl FnMut(Res<GameTime>) -> bool {
-    move |gametime: Res<GameTime>| (gametime.tick() + quant.offset as u64) % quant.n as u64 == 0
+    move |gametime: Res<GameTime>| {
+        (gametime.tick() + quant.offset as u64) % quant.n as u64 == 0
+    }
 }
